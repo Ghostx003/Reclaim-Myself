@@ -300,33 +300,73 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
               </div>
 
               {/* Big Touch-Friendly Yes/No Controls */}
-              <div className="audit-answer-controls">
-                <button
-                  type="button"
-                  disabled={isFuture}
-                  onClick={() => handleAnswerToggle(goal.id, true)}
-                  className={`audit-choice-btn btn-yes ${
-                    hasAnswer && currentAnswer.answer === true ? 'selected-yes' : ''
-                  }`}
-                  aria-pressed={hasAnswer && currentAnswer.answer === true}
-                >
-                  <Check size={20} strokeWidth={3} />
-                  <span>Yes</span>
-                </button>
+              {(() => {
+                const isPositive = goal.polarity === 'positive';
+                const isYesSelected = hasAnswer && currentAnswer.answer === true;
+                const isNoSelected = hasAnswer && currentAnswer.answer === false;
 
-                <button
-                  type="button"
-                  disabled={isFuture}
-                  onClick={() => handleAnswerToggle(goal.id, false)}
-                  className={`audit-choice-btn btn-no ${
-                    hasAnswer && currentAnswer.answer === false ? 'selected-no' : ''
-                  }`}
-                  aria-pressed={hasAnswer && currentAnswer.answer === false}
-                >
-                  <X size={20} strokeWidth={3} />
-                  <span>No</span>
-                </button>
-              </div>
+                const yesIsWin = isPositive;
+                const yesSelectedClass = isYesSelected
+                  ? yesIsWin
+                    ? 'selected-win'
+                    : 'selected-loss'
+                  : '';
+
+                const noIsWin = !isPositive;
+                const noSelectedClass = isNoSelected
+                  ? noIsWin
+                    ? 'selected-win'
+                    : 'selected-loss'
+                  : '';
+
+                return (
+                  <div className="audit-answer-controls">
+                    <button
+                      type="button"
+                      disabled={isFuture}
+                      onClick={() => handleAnswerToggle(goal.id, true)}
+                      className={`audit-choice-btn ${yesSelectedClass}`}
+                      aria-pressed={isYesSelected}
+                    >
+                      {isYesSelected ? (
+                        yesIsWin ? (
+                          <Check size={20} strokeWidth={3} />
+                        ) : (
+                          <X size={20} strokeWidth={3} />
+                        )
+                      ) : (
+                        <span className="choice-indicator-dot" />
+                      )}
+                      <span>Yes</span>
+                      <span className={`choice-badge ${yesIsWin ? 'badge-is-win' : 'badge-is-loss'}`}>
+                        {yesIsWin ? 'Win' : 'Loss'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={isFuture}
+                      onClick={() => handleAnswerToggle(goal.id, false)}
+                      className={`audit-choice-btn ${noSelectedClass}`}
+                      aria-pressed={isNoSelected}
+                    >
+                      {isNoSelected ? (
+                        noIsWin ? (
+                          <Check size={20} strokeWidth={3} />
+                        ) : (
+                          <X size={20} strokeWidth={3} />
+                        )
+                      ) : (
+                        <span className="choice-indicator-dot" />
+                      )}
+                      <span>No</span>
+                      <span className={`choice-badge ${noIsWin ? 'badge-is-win' : 'badge-is-loss'}`}>
+                        {noIsWin ? 'Win' : 'Loss'}
+                      </span>
+                    </button>
+                  </div>
+                );
+              })()}
 
               {/* Optional Reason / Note Input */}
               {showNoteField && (
@@ -581,18 +621,59 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
           transform: translateY(-1px);
         }
 
-        .selected-yes {
+        .selected-win {
           background: linear-gradient(135deg, rgba(16, 185, 129, 0.35), rgba(16, 185, 129, 0.2)) !important;
           border-color: var(--color-success) !important;
           color: #ffffff !important;
-          box-shadow: 0 0 16px rgba(16, 185, 129, 0.35);
+          box-shadow: 0 0 16px rgba(16, 185, 129, 0.35) !important;
         }
 
-        .selected-no {
+        .selected-loss {
           background: linear-gradient(135deg, rgba(244, 63, 94, 0.35), rgba(244, 63, 94, 0.2)) !important;
           border-color: var(--color-failure) !important;
           color: #ffffff !important;
-          box-shadow: 0 0 16px rgba(244, 63, 94, 0.35);
+          box-shadow: 0 0 16px rgba(244, 63, 94, 0.35) !important;
+        }
+
+        .choice-badge {
+          font-size: 0.7rem;
+          font-weight: 700;
+          padding: 2px 7px;
+          border-radius: var(--radius-full);
+          margin-left: 0.35rem;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+        }
+
+        .badge-is-win {
+          background: rgba(16, 185, 129, 0.18);
+          color: var(--color-success);
+          border: 1px solid rgba(16, 185, 129, 0.35);
+        }
+
+        .badge-is-loss {
+          background: rgba(244, 63, 94, 0.18);
+          color: var(--color-failure);
+          border: 1px solid rgba(244, 63, 94, 0.35);
+        }
+
+        .selected-win .badge-is-win {
+          background: rgba(255, 255, 255, 0.25);
+          color: #ffffff;
+          border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .selected-loss .badge-is-loss {
+          background: rgba(255, 255, 255, 0.25);
+          color: #ffffff;
+          border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .choice-indicator-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: var(--radius-full);
+          background: var(--text-dim);
         }
 
         .note-input-container {

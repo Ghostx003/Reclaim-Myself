@@ -89,8 +89,8 @@ export function calculateDailyScore(
 }
 
 /**
- * Dynamically constructs a natural question prompt for any goal based on its text and polarity.
- * Never uses hardcoded conditionals for specific goals.
+ * Dynamically constructs a natural question prompt for any goal based on its text.
+ * Asks: Did you [title] today?
  */
 export function generateGoalQuestion(goal: Goal): string {
   const title = goal.title.trim();
@@ -100,10 +100,5 @@ export function generateGoalQuestion(goal: Goal): string {
     return title;
   }
 
-  // Generate generic natural question
-  if (goal.polarity === 'positive') {
-    return `Did you accomplish: "${title}"?`;
-  } else {
-    return `Did you avoid: "${title}"?`;
-  }
+  return `Did you ${title} today?`;
 }

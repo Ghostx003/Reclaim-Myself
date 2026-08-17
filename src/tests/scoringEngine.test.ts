@@ -120,7 +120,7 @@ describe('Scoring Engine & Goal Polarity', () => {
       updatedAt: '',
     };
 
-    expect(generateGoalQuestion(posGoal)).toBe('Did you accomplish: "Workout 45 mins"?');
-    expect(generateGoalQuestion(negGoal)).toBe('Did you avoid: "Smoking cigarettes"?');
+    expect(generateGoalQuestion(posGoal)).toBe('Did you Workout 45 mins today?');
+    expect(generateGoalQuestion(negGoal)).toBe('Did you Smoking cigarettes today?');
   });
 });
