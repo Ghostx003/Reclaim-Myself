@@ -1,4 +1,5 @@
 import React, { ReactNode, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 
 interface ModalProps {
@@ -34,21 +35,24 @@ export const Modal: React.FC<ModalProps> = ({
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
-  return (
+  const modalContent = (
     <div
       style={{
         position: 'fixed',
-        inset: 0,
-        zIndex: 999,
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100dvh',
+        zIndex: 99999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '1rem',
-        backgroundColor: 'rgba(5, 8, 15, 0.75)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backgroundColor: 'rgba(5, 8, 15, 0.78)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
       }}
       onClick={onClose}
       role="dialog"
@@ -63,9 +67,11 @@ export const Modal: React.FC<ModalProps> = ({
           maxHeight: 'calc(100dvh - 2rem)',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: 'var(--shadow-lg)',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--glass-border-hover)',
           border: '1px solid var(--glass-border-hover)',
           padding: 0,
+          margin: 'auto',
+          position: 'relative',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -115,4 +121,6 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 };
