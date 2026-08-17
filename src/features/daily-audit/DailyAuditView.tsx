@@ -9,6 +9,7 @@ import {
   Lock,
   Save,
   RotateCcw,
+  Calendar as CalendarIcon,
 } from 'lucide-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GlassButton } from '../../components/ui/GlassButton';
@@ -151,6 +152,28 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
     }
   };
 
+  const handleSaveAndJumpToToday = async () => {
+    const todayKey = getTodayKey();
+    if (currentDateKey === todayKey) return;
+
+    // If there are answers on this past date, save them
+    if (Object.keys(answers).length > 0) {
+      try {
+        await onSaveAudit(currentDateKey, answers);
+        showToast(
+          'success',
+          'Audit Saved',
+          `Saved audit for ${formatDisplayDate(currentDateKey)} and jumped to Today.`
+        );
+      } catch {
+        showToast('error', 'Failed to save audit for past date');
+      }
+    }
+
+    // Switch to today
+    setCurrentDateKey(todayKey);
+  };
+
   const handleResetDayAudit = async () => {
     if (isFuture || isResetting) return;
     setIsResetting(true);
@@ -234,17 +257,30 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
       <GlassCard className={`audit-score-card ${celebrateEffect ? 'animate-pop-in' : ''}`}>
         <div className="score-card-top-bar">
           <div className="score-status-title">Daily Performance Overview</div>
-          {canReset && !isFuture && (
-            <button
-              type="button"
-              className="clear-audit-top-btn"
-              onClick={() => setShowResetConfirm(true)}
-              title="Clear all selected answers and delete audit record for this day"
-            >
-              <RotateCcw size={14} />
-              <span>Clear / Reset Day Audit</span>
-            </button>
-          )}
+          <div className="score-top-actions">
+            {!isToday && !isFuture && (
+              <button
+                type="button"
+                className="jump-today-btn"
+                onClick={handleSaveAndJumpToToday}
+                title="Save this day's audit and return to Today"
+              >
+                <CalendarIcon size={14} />
+                <span>Save & Jump to Today</span>
+              </button>
+            )}
+            {canReset && !isFuture && (
+              <button
+                type="button"
+                className="clear-audit-top-btn"
+                onClick={() => setShowResetConfirm(true)}
+                title="Clear all selected answers and delete audit record for this day"
+              >
+                <RotateCcw size={14} />
+                <span>Clear / Reset Day Audit</span>
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="score-summary-flex">
@@ -589,6 +625,34 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
           color: var(--text-dim);
           text-transform: uppercase;
           letter-spacing: 0.05em;
+        }
+
+        .score-top-actions {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          flex-wrap: wrap;
+        }
+
+        .jump-today-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          padding: 3px 10px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: var(--accent-primary);
+          background: rgba(56, 189, 248, 0.12);
+          border: 1px solid rgba(56, 189, 248, 0.3);
+          border-radius: var(--radius-full);
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+
+        .jump-today-btn:hover {
+          background: rgba(56, 189, 248, 0.22);
+          border-color: var(--accent-primary);
+          transform: translateY(-1px);
         }
 
         .clear-audit-top-btn {
