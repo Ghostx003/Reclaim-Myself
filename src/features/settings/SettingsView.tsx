@@ -307,6 +307,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                   <div className="goal-actions-right">
                     <PolarityBadge polarity={g.polarity} size="sm" />
                     <button
+                      type="button"
                       className="btn-icon"
                       style={{ width: '36px', height: '36px', minWidth: '36px', minHeight: '36px' }}
                       onClick={() => onEditGoal(g)}

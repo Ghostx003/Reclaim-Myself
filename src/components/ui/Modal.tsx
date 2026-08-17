@@ -98,6 +98,7 @@ export const Modal: React.FC<ModalProps> = ({
           </h2>
           {showCloseButton && (
             <button
+              type="button"
               onClick={onClose}
               className="btn-icon"
               style={{ width: '36px', height: '36px', minWidth: '36px', minHeight: '36px' }}

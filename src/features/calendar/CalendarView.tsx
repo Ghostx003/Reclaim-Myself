@@ -116,6 +116,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
           <div className="nav-arrows">
             <button
+              type="button"
               onClick={handlePrevMonth}
               className="btn-icon"
               style={{ width: '38px', height: '38px', minWidth: '38px', minHeight: '38px' }}
@@ -124,6 +125,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <ChevronLeft size={20} />
             </button>
             <button
+              type="button"
               onClick={handleNextMonth}
               className="btn-icon"
               style={{ width: '38px', height: '38px', minWidth: '38px', minHeight: '38px' }}

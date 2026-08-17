@@ -212,6 +212,7 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
       {/* Date Bar */}
       <div className="audit-date-bar glass-panel">
         <button
+          type="button"
           onClick={handlePrevDay}
           className="btn-icon"
           aria-label="Previous day"
@@ -236,6 +237,7 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
         </div>
 
         <button
+          type="button"
           onClick={handleNextDay}
           className="btn-icon"
           disabled={!canGoNext}

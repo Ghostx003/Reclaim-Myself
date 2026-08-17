@@ -31,6 +31,7 @@ export const GlassButton: React.FC<GlassButtonProps> = ({
 
   return (
     <button
+      type={rest.type || 'button'}
       className={`${variantClass} ${className}`}
       style={{
         width: fullWidth ? '100%' : undefined,

@@ -345,6 +345,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
 
           <div className="mini-calendar-nav-controls">
             <button
+              type="button"
               onClick={handlePrevMonth}
               className="btn-icon"
               style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px' }}
@@ -361,6 +362,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
             </span>
 
             <button
+              type="button"
               onClick={handleNextMonth}
               className="btn-icon"
               style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px' }}
@@ -370,7 +372,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
             </button>
 
             {!isCurrentMonthActive && (
-              <button onClick={handleResetToCurrentMonth} className="current-month-pill-btn">
+              <button type="button" onClick={handleResetToCurrentMonth} className="current-month-pill-btn">
                 Today
               </button>
             )}

@@ -40,6 +40,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
               const isActive = currentView === item.id || (item.id === 'reallife' && currentView === 'goaldetail');
               return (
                 <button
+                  type="button"
                   key={item.id}
                   onClick={() => onNavigate(item.id)}
                   className={`nav-link-btn ${isActive ? 'nav-link-active' : ''}`}
@@ -62,6 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
             const isActive = currentView === item.id || (item.id === 'reallife' && currentView === 'goaldetail');
             return (
               <button
+                type="button"
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
                 className={`mobile-nav-btn ${isActive ? 'mobile-nav-active' : ''}`}
