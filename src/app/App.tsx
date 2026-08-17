@@ -24,7 +24,7 @@ export const App: React.FC = () => {
   const { profile, isOnboarded, saveName, updatePreferences, clearProfile } = useProfile();
   const { goals, createGoal, updateGoal, deleteGoal } = useGoals(false);
   const { audits, saveAudit } = useAudits();
-  const { counters, counterEvents, createCounter, updateDelta } = useCounters();
+  const { counters, counterEvents, createCounter, updateDelta, deleteCounter } = useCounters();
   const { milestones, awards } = useMilestones();
 
   // Navigation State
@@ -239,6 +239,7 @@ export const App: React.FC = () => {
             onOpenGoalCreator={handleOpenGoalCreator}
             onOpenCounterCreator={() => handleOpenCounterCreator()}
             onUpdateCounterDelta={handleUpdateCounterDelta}
+            onDeleteCounter={deleteCounter}
           />
         )}
 
@@ -251,6 +252,7 @@ export const App: React.FC = () => {
             onEditGoal={handleEditGoal}
             onOpenCounterCreator={(gId) => handleOpenCounterCreator(gId)}
             onUpdateCounterDelta={handleUpdateCounterDelta}
+            onDeleteCounter={deleteCounter}
           />
         )}
 

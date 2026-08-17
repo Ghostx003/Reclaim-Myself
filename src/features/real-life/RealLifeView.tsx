@@ -10,11 +10,13 @@ import {
   Calendar,
   Edit2,
   Check,
+  Trash2,
 } from 'lucide-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GlassButton } from '../../components/ui/GlassButton';
 import { PolarityBadge } from '../../components/ui/PolarityBadge';
 import { EmptyState } from '../../components/feedback/EmptyState';
+import { Modal } from '../../components/ui/Modal';
 import { calculateAllGoalsStreakStats } from '../../services/streaks/streakEngine';
 import { getContextualMotivation } from '../../services/motivation/motivationService';
 import { calculateCounterAggregates } from '../../services/analytics/analyticsService';
@@ -39,6 +41,7 @@ interface RealLifeViewProps {
   onOpenGoalCreator: () => void;
   onOpenCounterCreator: () => void;
   onUpdateCounterDelta: (counterId: string, delta: number) => Promise<void>;
+  onDeleteCounter: (counterId: string) => Promise<void>;
 }
 
 export const RealLifeView: React.FC<RealLifeViewProps> = ({
@@ -51,6 +54,7 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
   onOpenGoalCreator,
   onOpenCounterCreator,
   onUpdateCounterDelta,
+  onDeleteCounter,
 }) => {
   const activeGoals = useMemo(() => goals.filter((g) => !g.isArchived), [goals]);
   const allStreakStats = useMemo(
@@ -73,6 +77,10 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
   const [editingCounterId, setEditingCounterId] = useState<string | null>(null);
   const [editCounterValue, setEditCounterValue] = useState<string>('');
   const counterInputRef = useRef<HTMLInputElement>(null);
+
+  // Counter Deletion Confirmation state
+  const [counterToDelete, setCounterToDelete] = useState<CustomCounter | null>(null);
+  const [isDeletingCounter, setIsDeletingCounter] = useState(false);
 
   const startEditingCounter = (counter: CustomCounter, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -101,6 +109,17 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
 
   const cancelCounterEdit = () => {
     setEditingCounterId(null);
+  };
+
+  const handleConfirmDeleteCounter = async () => {
+    if (!counterToDelete) return;
+    setIsDeletingCounter(true);
+    try {
+      await onDeleteCounter(counterToDelete.id);
+      setCounterToDelete(null);
+    } finally {
+      setIsDeletingCounter(false);
+    }
   };
 
   // Overall calculations
@@ -273,7 +292,7 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           <div>
             <h2>Custom Quantity Counters</h2>
             <p style={{ fontSize: '0.85rem' }}>
-              Track arbitrary metrics (savings, steps, pages, water). Click value to edit directly.
+              Track arbitrary metrics (savings, steps, pages, water). Hover to delete or click value to edit.
             </p>
           </div>
           <GlassButton variant="secondary" size="sm" onClick={onOpenCounterCreator}>
@@ -295,8 +314,24 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
               return (
                 <GlassCard key={counter.id} className="counter-widget-card">
                   <div className="counter-header-row">
-                    <span className="counter-name">{counter.name}</span>
-                    <span className="counter-unit-tag">{counter.unit}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <span className="counter-name">{counter.name}</span>
+                      <span className="counter-unit-tag">{counter.unit}</span>
+                    </div>
+
+                    {/* Delete Counter Button (Visible on Hover / Touch) */}
+                    <button
+                      type="button"
+                      className="counter-delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCounterToDelete(counter);
+                      }}
+                      title={`Delete "${counter.name}"`}
+                      aria-label={`Delete "${counter.name}"`}
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
 
                   {/* Direct Editable Value */}
@@ -419,6 +454,44 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Delete Counter Confirmation Modal */}
+      {counterToDelete && (
+        <Modal
+          isOpen={Boolean(counterToDelete)}
+          onClose={() => setCounterToDelete(null)}
+          title={`Delete "${counterToDelete.name}"?`}
+          maxWidth="440px"
+        >
+          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+            <div
+              style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--color-failure-bg)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
+              <Trash2 size={24} color="var(--color-failure)" />
+            </div>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+              Are you sure you want to delete this custom counter? All historical quantity entries for this counter will be removed.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <GlassButton variant="secondary" onClick={() => setCounterToDelete(null)} disabled={isDeletingCounter}>
+                Cancel
+              </GlassButton>
+              <GlassButton variant="danger" onClick={handleConfirmDeleteCounter} disabled={isDeletingCounter}>
+                {isDeletingCounter ? 'Deleting...' : 'Confirm Delete'}
+              </GlassButton>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <style>{`
         .reallife-view-container {
@@ -682,6 +755,7 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           display: flex;
           flex-direction: column;
           gap: 0.75rem;
+          position: relative;
         }
 
         .counter-header-row {
@@ -702,6 +776,32 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           background: rgba(255, 255, 255, 0.06);
           padding: 2px 6px;
           border-radius: 4px;
+        }
+
+        .counter-delete-btn {
+          width: 28px;
+          height: 28px;
+          border-radius: var(--radius-sm);
+          background: transparent;
+          border: 1px solid transparent;
+          color: var(--text-dim);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          opacity: 0;
+          transition: all var(--transition-fast);
+        }
+
+        .counter-widget-card:hover .counter-delete-btn,
+        .counter-delete-btn:focus {
+          opacity: 1;
+        }
+
+        .counter-delete-btn:hover {
+          background: var(--color-failure-bg);
+          border-color: var(--color-failure-border);
+          color: var(--color-failure);
         }
 
         .counter-value-huge-clickable {
@@ -877,6 +977,12 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           font-size: 0.68rem;
           color: var(--text-dim);
           margin-top: 0.25rem;
+        }
+
+        @media (hover: none) {
+          .counter-delete-btn {
+            opacity: 0.8;
+          }
         }
       `}</style>
     </div>

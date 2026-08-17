@@ -12,11 +12,13 @@ import {
   Trophy,
   Edit2,
   Check,
+  Trash2,
 } from 'lucide-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GlassButton } from '../../components/ui/GlassButton';
 import { PolarityBadge } from '../../components/ui/PolarityBadge';
 import { DonutProgress } from '../../components/ui/DonutProgress';
+import { Modal } from '../../components/ui/Modal';
 import { calculateGoalStreakStats } from '../../services/streaks/streakEngine';
 import { generateGoalHeatmap } from '../../services/analytics/analyticsService';
 import { formatDisplayDate, getDaysInMonth } from '../../services/date/dateService';
@@ -31,6 +33,7 @@ interface GoalDetailViewProps {
   onEditGoal: (goal: Goal) => void;
   onOpenCounterCreator: (goalId: string) => void;
   onUpdateCounterDelta: (counterId: string, delta: number) => Promise<void>;
+  onDeleteCounter: (counterId: string) => Promise<void>;
 }
 
 export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
@@ -41,6 +44,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
   onEditGoal,
   onOpenCounterCreator,
   onUpdateCounterDelta,
+  onDeleteCounter,
 }) => {
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -49,6 +53,10 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
   const [editingCounterId, setEditingCounterId] = useState<string | null>(null);
   const [editCounterValue, setEditCounterValue] = useState<string>('');
   const counterInputRef = useRef<HTMLInputElement>(null);
+
+  // Counter Deletion Confirmation state
+  const [counterToDelete, setCounterToDelete] = useState<CustomCounter | null>(null);
+  const [isDeletingCounter, setIsDeletingCounter] = useState(false);
 
   const startEditingCounter = (counter: CustomCounter, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -77,6 +85,17 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
 
   const cancelCounterEdit = () => {
     setEditingCounterId(null);
+  };
+
+  const handleConfirmDeleteCounter = async () => {
+    if (!counterToDelete) return;
+    setIsDeletingCounter(true);
+    try {
+      await onDeleteCounter(counterToDelete.id);
+      setCounterToDelete(null);
+    } finally {
+      setIsDeletingCounter(false);
+    }
   };
 
   const handlePrevMonth = () => {
@@ -341,7 +360,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
         <div className="section-title-row">
           <div>
             <h3>Goal Counters</h3>
-            <p style={{ fontSize: '0.8rem' }}>Custom metrics specifically associated with this goal. Click value to edit.</p>
+            <p style={{ fontSize: '0.8rem' }}>Custom metrics specifically associated with this goal. Hover to delete or click value to edit.</p>
           </div>
           <GlassButton variant="secondary" size="sm" onClick={() => onOpenCounterCreator(goal.id)}>
             <Plus size={14} />
@@ -362,7 +381,23 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
                 <GlassCard key={c.id} className="goal-counter-card">
                   <div className="counter-row">
                     <div>
-                      <span className="counter-card-title">{c.name}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span className="counter-card-title">{c.name}</span>
+                        {/* Delete Counter Button */}
+                        <button
+                          type="button"
+                          className="counter-delete-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCounterToDelete(c);
+                          }}
+                          title={`Delete "${c.name}"`}
+                          aria-label={`Delete "${c.name}"`}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+
                       {isEditing ? (
                         <div className="counter-edit-wrapper" onClick={(e) => e.stopPropagation()}>
                           <input
@@ -400,6 +435,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
                         </div>
                       )}
                     </div>
+
                     <div style={{ display: 'flex', gap: '0.4rem' }}>
                       <button
                         className="counter-btn"
@@ -447,6 +483,44 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
           </div>
         )}
       </div>
+
+      {/* Delete Counter Confirmation Modal */}
+      {counterToDelete && (
+        <Modal
+          isOpen={Boolean(counterToDelete)}
+          onClose={() => setCounterToDelete(null)}
+          title={`Delete "${counterToDelete.name}"?`}
+          maxWidth="440px"
+        >
+          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+            <div
+              style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--color-failure-bg)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
+              <Trash2 size={24} color="var(--color-failure)" />
+            </div>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>
+              Are you sure you want to delete this custom counter? All historical quantity entries for this counter will be removed.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <GlassButton variant="secondary" onClick={() => setCounterToDelete(null)} disabled={isDeletingCounter}>
+                Cancel
+              </GlassButton>
+              <GlassButton variant="danger" onClick={handleConfirmDeleteCounter} disabled={isDeletingCounter}>
+                {isDeletingCounter ? 'Deleting...' : 'Confirm Delete'}
+              </GlassButton>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       <style>{`
         .goal-detail-container {
@@ -667,6 +741,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
 
         .goal-counter-card {
           padding: 1rem;
+          position: relative;
         }
 
         .counter-row {
@@ -679,6 +754,32 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
           font-size: 0.95rem;
           font-weight: 700;
           color: var(--text-main);
+        }
+
+        .counter-delete-btn {
+          width: 24px;
+          height: 24px;
+          border-radius: var(--radius-sm);
+          background: transparent;
+          border: 1px solid transparent;
+          color: var(--text-dim);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          opacity: 0;
+          transition: all var(--transition-fast);
+        }
+
+        .goal-counter-card:hover .counter-delete-btn,
+        .counter-delete-btn:focus {
+          opacity: 1;
+        }
+
+        .counter-delete-btn:hover {
+          background: var(--color-failure-bg);
+          border-color: var(--color-failure-border);
+          color: var(--color-failure);
         }
 
         .counter-value-huge-clickable {
@@ -799,6 +900,12 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
         @media (max-width: 640px) {
           .hero-top-row {
             flex-direction: column;
+          }
+        }
+
+        @media (hover: none) {
+          .counter-delete-btn {
+            opacity: 0.8;
           }
         }
       `}</style>
