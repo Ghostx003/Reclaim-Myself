@@ -23,7 +23,7 @@ export const App: React.FC = () => {
   const { showToast } = useToast();
   const { profile, isOnboarded, saveName, updatePreferences, clearProfile } = useProfile();
   const { goals, createGoal, updateGoal, deleteGoal } = useGoals(false);
-  const { audits, saveAudit } = useAudits();
+  const { audits, saveAudit, deleteAudit } = useAudits();
   const { counters, counterEvents, createCounter, updateDelta, deleteCounter } = useCounters();
   const { milestones, awards } = useMilestones();
 
@@ -223,6 +223,7 @@ export const App: React.FC = () => {
             onSaveAudit={async (date, answers) => {
               await saveAudit(date, answers, userPrefs);
             }}
+            onDeleteAudit={deleteAudit}
             onOpenGoalCreator={handleOpenGoalCreator}
           />
         )}

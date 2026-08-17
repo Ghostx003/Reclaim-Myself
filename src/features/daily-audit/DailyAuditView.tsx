@@ -8,6 +8,7 @@ import {
   Sparkles,
   Lock,
   Save,
+  RotateCcw,
 } from 'lucide-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GlassButton } from '../../components/ui/GlassButton';
@@ -15,6 +16,7 @@ import { DonutProgress } from '../../components/ui/DonutProgress';
 import { StarRating } from '../../components/ui/StarRating';
 import { PolarityBadge } from '../../components/ui/PolarityBadge';
 import { EmptyState } from '../../components/feedback/EmptyState';
+import { Modal } from '../../components/ui/Modal';
 import { useToast } from '../../components/feedback/ToastContext';
 import {
   addDaysToDateKey,
@@ -39,6 +41,7 @@ interface DailyAuditViewProps {
     date: string,
     answers: Record<string, GoalAuditAnswer>
   ) => Promise<void>;
+  onDeleteAudit: (date: string) => Promise<void>;
   onOpenGoalCreator: () => void;
 }
 
@@ -48,6 +51,7 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
   audits,
   preferences,
   onSaveAudit,
+  onDeleteAudit,
   onOpenGoalCreator,
 }) => {
   const { showToast } = useToast();
@@ -57,6 +61,8 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
   const [answers, setAnswers] = useState<Record<string, GoalAuditAnswer>>({});
   const [notesOpen, setNotesOpen] = useState<Record<string, boolean>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [celebrateEffect, setCelebrateEffect] = useState(false);
 
   const activeGoals = useMemo(() => goals.filter((g) => !g.isArchived), [goals]);
@@ -78,6 +84,9 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
   const isFuture = isFutureDate(currentDateKey);
   const isToday = isTodayDate(currentDateKey);
   const canGoNext = !isFutureDate(addDaysToDateKey(currentDateKey, 1));
+  const hasExistingRecordedAudit = useMemo(() => {
+    return audits.some((a) => a.date === currentDateKey);
+  }, [audits, currentDateKey]);
 
   const handlePrevDay = () => {
     setCurrentDateKey((d) => addDaysToDateKey(d, -1));
@@ -142,6 +151,22 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
     }
   };
 
+  const handleResetDayAudit = async () => {
+    if (isFuture || isResetting) return;
+    setIsResetting(true);
+    try {
+      await onDeleteAudit(currentDateKey);
+      setAnswers({});
+      setNotesOpen({});
+      setShowResetConfirm(false);
+      showToast('info', 'Audit Reset', `All answers and data cleared for ${formatDisplayDate(currentDateKey)}.`);
+    } catch {
+      showToast('error', 'Failed to reset audit');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   if (activeGoals.length === 0) {
     return (
       <div className="daily-audit-container animate-fade-in">
@@ -157,6 +182,7 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
   }
 
   const answeredCount = Object.keys(answers).length;
+  const canReset = answeredCount > 0 || hasExistingRecordedAudit;
 
   return (
     <div className="daily-audit-container animate-fade-in">
@@ -173,12 +199,17 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
 
         <div className="audit-date-center">
           <div className="audit-date-text">{formatDisplayDate(currentDateKey)}</div>
-          {isToday && <span className="today-badge">TODAY'S AUDIT</span>}
-          {isFuture && (
-            <span className="locked-badge">
-              <Lock size={12} /> FUTURE DATE (LOCKED)
-            </span>
-          )}
+          <div className="audit-badges-row">
+            {isToday && <span className="today-badge">TODAY'S AUDIT</span>}
+            {isFuture && (
+              <span className="locked-badge">
+                <Lock size={12} /> FUTURE DATE (LOCKED)
+              </span>
+            )}
+            {hasExistingRecordedAudit && !isFuture && (
+              <span className="recorded-badge">AUDITED</span>
+            )}
+          </div>
         </div>
 
         <button
@@ -201,6 +232,21 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
 
       {/* Real-Time Live Score Summary Card */}
       <GlassCard className={`audit-score-card ${celebrateEffect ? 'animate-pop-in' : ''}`}>
+        <div className="score-card-top-bar">
+          <div className="score-status-title">Daily Performance Overview</div>
+          {canReset && !isFuture && (
+            <button
+              type="button"
+              className="clear-audit-top-btn"
+              onClick={() => setShowResetConfirm(true)}
+              title="Clear all selected answers and delete audit record for this day"
+            >
+              <RotateCcw size={14} />
+              <span>Clear / Reset Day Audit</span>
+            </button>
+          )}
+        </div>
+
         <div className="score-summary-flex">
           <div className="donut-wrap">
             <DonutProgress
@@ -410,6 +456,45 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
         </GlassButton>
       </div>
 
+      {/* Reset Day Audit Confirmation Modal */}
+      {showResetConfirm && (
+        <Modal
+          isOpen={showResetConfirm}
+          onClose={() => setShowResetConfirm(false)}
+          title="Reset Audit for This Date?"
+          maxWidth="460px"
+        >
+          <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+            <div
+              style={{
+                width: '52px',
+                height: '52px',
+                borderRadius: 'var(--radius-full)',
+                background: 'var(--color-failure-bg)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 1rem',
+              }}
+            >
+              <RotateCcw size={24} color="var(--color-failure)" />
+            </div>
+            <h3 style={{ fontSize: '1.15rem', marginBottom: '0.5rem' }}>Clear all choices for {formatDisplayDate(currentDateKey)}?</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.88rem', lineHeight: '1.45' }}>
+              This will remove the recorded audit for this date, deselect all options, and recalculate streaks, calendar ratings, and win rates across Re-Life.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <GlassButton variant="secondary" onClick={() => setShowResetConfirm(false)} disabled={isResetting}>
+                Cancel
+              </GlassButton>
+              <GlassButton variant="danger" onClick={handleResetDayAudit} disabled={isResetting}>
+                {isResetting ? 'Resetting...' : 'Yes, Clear & Reset'}
+              </GlassButton>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <style>{`
         .daily-audit-container {
           display: flex;
@@ -429,7 +514,7 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
           display: flex;
           flex-direction: column;
           align-items: center;
-          gap: 0.25rem;
+          gap: 0.35rem;
         }
 
         .audit-date-text {
@@ -440,11 +525,30 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
           text-align: center;
         }
 
+        .audit-badges-row {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
         .today-badge {
           font-size: 0.65rem;
           font-weight: 800;
           color: var(--accent-primary);
           background: rgba(56, 189, 248, 0.15);
+          padding: 2px 8px;
+          border-radius: var(--radius-full);
+          letter-spacing: 0.05em;
+        }
+
+        .recorded-badge {
+          font-size: 0.65rem;
+          font-weight: 800;
+          color: var(--color-success);
+          background: var(--color-success-bg);
+          border: 1px solid var(--color-success-border);
           padding: 2px 8px;
           border-radius: var(--radius-full);
           letter-spacing: 0.05em;
@@ -465,7 +569,46 @@ export const DailyAuditView: React.FC<DailyAuditViewProps> = ({
         /* Score Summary Card */
         .audit-score-card {
           border: 1px solid var(--glass-border-hover);
-          padding: 1.5rem;
+          padding: 1.25rem 1.5rem;
+        }
+
+        .score-card-top-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 1rem;
+          padding-bottom: 0.5rem;
+          border-bottom: 1px solid var(--glass-border-subtle);
+          flex-wrap: wrap;
+          gap: 0.5rem;
+        }
+
+        .score-status-title {
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: var(--text-dim);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+
+        .clear-audit-top-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 3px 10px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--color-failure);
+          background: var(--color-failure-bg);
+          border: 1px solid var(--color-failure-border);
+          border-radius: var(--radius-full);
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+
+        .clear-audit-top-btn:hover {
+          background: rgba(244, 63, 94, 0.2);
+          transform: translateY(-1px);
         }
 
         .score-summary-flex {
