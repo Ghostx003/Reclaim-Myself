@@ -31,6 +31,7 @@ export interface Goal {
   color?: string; // hex or theme color token
   category?: string;
   targetStreak?: number; // target streak in days (e.g. 21, 30, 90)
+  heatmapDays?: number; // custom per-goal heatmap duration (default 21)
   isArchived: boolean;
   createdAt: string; // ISO string
   updatedAt: string;

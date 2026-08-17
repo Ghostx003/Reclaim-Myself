@@ -251,6 +251,9 @@ export const App: React.FC = () => {
             counters={counters.filter((c) => c.goalId === selectedGoal.id)}
             onBack={() => setCurrentView('reallife')}
             onEditGoal={handleEditGoal}
+            onUpdateGoalHeatmapDays={async (goalId, days) => {
+              await updateGoal(goalId, { heatmapDays: days });
+            }}
             onOpenCounterCreator={(gId) => handleOpenCounterCreator(gId)}
             onUpdateCounterDelta={handleUpdateCounterDelta}
             onDeleteCounter={deleteCounter}

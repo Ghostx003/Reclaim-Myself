@@ -31,6 +31,7 @@ interface GoalDetailViewProps {
   counters: CustomCounter[];
   onBack: () => void;
   onEditGoal: (goal: Goal) => void;
+  onUpdateGoalHeatmapDays: (goalId: string, days: number) => Promise<void>;
   onOpenCounterCreator: (goalId: string) => void;
   onUpdateCounterDelta: (counterId: string, delta: number) => Promise<void>;
   onDeleteCounter: (counterId: string) => Promise<void>;
@@ -42,6 +43,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
   counters,
   onBack,
   onEditGoal,
+  onUpdateGoalHeatmapDays,
   onOpenCounterCreator,
   onUpdateCounterDelta,
   onDeleteCounter,
@@ -49,8 +51,18 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
-  // Editable Heatmap Timeframe state (Default to 21 Days)
-  const [heatmapDays, setHeatmapDays] = useState<number>(21);
+  // Per-Goal Editable Heatmap Timeframe state (Default to 21 Days or stored preference)
+  const [heatmapDays, setHeatmapDays] = useState<number>(goal.heatmapDays || 21);
+
+  useEffect(() => {
+    setHeatmapDays(goal.heatmapDays || 21);
+  }, [goal.id, goal.heatmapDays]);
+
+  const handleHeatmapDaysChange = (newDays: number) => {
+    const clamped = Math.max(1, Math.min(365, newDays));
+    setHeatmapDays(clamped);
+    onUpdateGoalHeatmapDays(goal.id, clamped);
+  };
 
   // Inline Counter Editing state
   const [editingCounterId, setEditingCounterId] = useState<string | null>(null);
@@ -261,21 +273,21 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
                 max={365}
                 className="heatmap-days-input"
                 value={heatmapDays}
-                onChange={(e) => setHeatmapDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 21)))}
+                onChange={(e) => handleHeatmapDaysChange(parseInt(e.target.value) || 21)}
                 onFocus={(e) => e.target.select()}
                 title="Type custom number of days for heatmap"
               />
-              <span>-Day Activity Heatmap</span>
+              <span>-Day Heatmap</span>
             </h3>
 
             {/* Timeframe Presets */}
             <div className="heatmap-presets">
-              {[21, 30, 60, 90, 84].map((d) => (
+              {[7, 21, 30, 60, 90, 84].map((d) => (
                 <button
                   key={d}
                   type="button"
                   className={`heatmap-preset-chip ${heatmapDays === d ? 'chip-active' : ''}`}
-                  onClick={() => setHeatmapDays(d)}
+                  onClick={() => handleHeatmapDaysChange(d)}
                 >
                   {d === 84 ? '12w' : `${d}d`}
                 </button>
