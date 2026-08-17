@@ -107,6 +107,7 @@ export const CounterManagerModal: React.FC<CounterManagerModalProps> = ({
               className="glass-input"
               value={incrementValue}
               onChange={(e) => setIncrementValue(Math.max(1, parseInt(e.target.value) || 1))}
+              onFocus={(e) => e.target.select()}
             />
           </div>
         </div>
@@ -140,6 +141,7 @@ export const CounterManagerModal: React.FC<CounterManagerModalProps> = ({
             className="glass-input"
             value={initialValue}
             onChange={(e) => setInitialValue(parseInt(e.target.value) || 0)}
+            onFocus={(e) => e.target.select()}
           />
         </div>
 

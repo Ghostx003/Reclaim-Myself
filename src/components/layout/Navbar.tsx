@@ -13,7 +13,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentView, onNavigate }) => {
   const navItems = [
     { id: 'calendar' as AppView, label: 'Calendar', icon: Calendar },
     { id: 'audit' as AppView, label: 'Daily Audit', icon: CheckSquare },
-    { id: 'reallife' as AppView, label: 'Real Life', icon: Sparkles },
+    { id: 'reallife' as AppView, label: 'Re-Life', icon: Sparkles },
     { id: 'settings' as AppView, label: 'Settings', icon: Settings },
   ];
 

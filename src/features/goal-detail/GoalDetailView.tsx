@@ -1,13 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   ArrowLeft,
   Flame,
   CheckCircle2,
   XCircle,
   Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
   Edit,
   Plus,
   Trophy,
+  Edit2,
+  Check,
 } from 'lucide-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GlassButton } from '../../components/ui/GlassButton';
@@ -38,8 +42,66 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
   onOpenCounterCreator,
   onUpdateCounterDelta,
 }) => {
-  const selectedMonth = new Date().getMonth();
-  const selectedYear = new Date().getFullYear();
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+
+  // Inline Counter Editing state
+  const [editingCounterId, setEditingCounterId] = useState<string | null>(null);
+  const [editCounterValue, setEditCounterValue] = useState<string>('');
+  const counterInputRef = useRef<HTMLInputElement>(null);
+
+  const startEditingCounter = (counter: CustomCounter, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingCounterId(counter.id);
+    setEditCounterValue(String(counter.currentValue ?? 0));
+  };
+
+  useEffect(() => {
+    if (editingCounterId && counterInputRef.current) {
+      counterInputRef.current.focus();
+      counterInputRef.current.select();
+    }
+  }, [editingCounterId]);
+
+  const commitCounterEdit = (counter: CustomCounter) => {
+    if (editingCounterId !== counter.id) return;
+    const parsed = parseInt(editCounterValue, 10);
+    const newVal = isNaN(parsed) ? 0 : parsed;
+    const delta = newVal - (counter.currentValue || 0);
+
+    if (delta !== 0) {
+      onUpdateCounterDelta(counter.id, delta);
+    }
+    setEditingCounterId(null);
+  };
+
+  const cancelCounterEdit = () => {
+    setEditingCounterId(null);
+  };
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear((y) => y - 1);
+    } else {
+      setSelectedMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear((y) => y + 1);
+    } else {
+      setSelectedMonth((m) => m + 1);
+    }
+  };
+
+  const handleResetToCurrentMonth = () => {
+    const now = new Date();
+    setSelectedYear(now.getFullYear());
+    setSelectedMonth(now.getMonth());
+  };
 
   const stats = useMemo(
     () => calculateGoalStreakStats(goal, audits),
@@ -67,7 +129,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
     return list;
   }, [goal, audits]);
 
-  // Mini goal-specific calendar matrix for current month
+  // Mini goal-specific calendar matrix for current/selected month
   const goalMonthDays = useMemo(() => {
     const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
     const auditMap = new Map<string, boolean>();
@@ -90,6 +152,9 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
     }
     return days;
   }, [goal, audits, selectedYear, selectedMonth]);
+
+  const isCurrentMonthActive =
+    selectedMonth === new Date().getMonth() && selectedYear === new Date().getFullYear();
 
   return (
     <div className="goal-detail-container animate-fade-in">
@@ -209,13 +274,46 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
         </div>
       </GlassCard>
 
-      {/* Mini Goal Calendar */}
+      {/* Mini Goal Calendar with Month Navigation Controls */}
       <GlassCard className="goal-mini-calendar-card">
         <div className="section-title-row">
-          <h3>Monthly Audit History</h3>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            {new Date(selectedYear, selectedMonth).toLocaleDateString(undefined, { month: 'long', year: 'numeric' })}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CalendarIcon size={18} color="var(--accent-primary)" />
+            <h3>Monthly Audit History</h3>
+          </div>
+
+          <div className="mini-calendar-nav-controls">
+            <button
+              onClick={handlePrevMonth}
+              className="btn-icon"
+              style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px' }}
+              aria-label="Previous month"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            <span className="mini-month-display">
+              {new Date(selectedYear, selectedMonth).toLocaleDateString(undefined, {
+                month: 'long',
+                year: 'numeric',
+              })}
+            </span>
+
+            <button
+              onClick={handleNextMonth}
+              className="btn-icon"
+              style={{ width: '32px', height: '32px', minWidth: '32px', minHeight: '32px' }}
+              aria-label="Next month"
+            >
+              <ChevronRight size={16} />
+            </button>
+
+            {!isCurrentMonthActive && (
+              <button onClick={handleResetToCurrentMonth} className="current-month-pill-btn">
+                Today
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="mini-calendar-days-grid">
@@ -243,7 +341,7 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
         <div className="section-title-row">
           <div>
             <h3>Goal Counters</h3>
-            <p style={{ fontSize: '0.8rem' }}>Custom metrics specifically associated with this goal.</p>
+            <p style={{ fontSize: '0.8rem' }}>Custom metrics specifically associated with this goal. Click value to edit.</p>
           </div>
           <GlassButton variant="secondary" size="sm" onClick={() => onOpenCounterCreator(goal.id)}>
             <Plus size={14} />
@@ -257,34 +355,71 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
           </GlassCard>
         ) : (
           <div className="detail-counters-grid">
-            {counters.map((c) => (
-              <GlassCard key={c.id} className="goal-counter-card">
-                <div className="counter-row">
-                  <div>
-                    <span className="counter-card-title">{c.name}</span>
-                    <div className="counter-card-val">
-                      {c.currentValue} <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)' }}>{c.unit}</span>
+            {counters.map((c) => {
+              const isEditing = editingCounterId === c.id;
+
+              return (
+                <GlassCard key={c.id} className="goal-counter-card">
+                  <div className="counter-row">
+                    <div>
+                      <span className="counter-card-title">{c.name}</span>
+                      {isEditing ? (
+                        <div className="counter-edit-wrapper" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            ref={counterInputRef}
+                            type="number"
+                            className="glass-input counter-inline-input"
+                            value={editCounterValue}
+                            onChange={(e) => setEditCounterValue(e.target.value)}
+                            onBlur={() => commitCounterEdit(c)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') commitCounterEdit(c);
+                              if (e.key === 'Escape') cancelCounterEdit();
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="counter-edit-save-btn"
+                            onClick={() => commitCounterEdit(c)}
+                            title="Save"
+                          >
+                            <Check size={16} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          className="counter-value-huge-clickable"
+                          onClick={(e) => startEditingCounter(c, e)}
+                          title="Click to directly edit value"
+                        >
+                          <span>{(c.currentValue ?? 0).toLocaleString()}</span>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-dim)', marginLeft: '4px' }}>
+                            {c.unit}
+                          </span>
+                          <Edit2 size={12} className="counter-edit-pencil-icon" />
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <button
+                        className="counter-btn"
+                        style={{ minHeight: '36px', padding: '0 12px' }}
+                        onClick={() => onUpdateCounterDelta(c.id, -c.incrementValue)}
+                      >
+                        -{c.incrementValue}
+                      </button>
+                      <button
+                        className="counter-btn counter-btn-plus"
+                        style={{ minHeight: '36px', padding: '0 12px' }}
+                        onClick={() => onUpdateCounterDelta(c.id, c.incrementValue)}
+                      >
+                        +{c.incrementValue}
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.4rem' }}>
-                    <button
-                      className="counter-btn"
-                      style={{ minHeight: '36px', padding: '0 12px' }}
-                      onClick={() => onUpdateCounterDelta(c.id, -c.incrementValue)}
-                    >
-                      -{c.incrementValue}
-                    </button>
-                    <button
-                      className="counter-btn counter-btn-plus"
-                      style={{ minHeight: '36px', padding: '0 12px' }}
-                      onClick={() => onUpdateCounterDelta(c.id, c.incrementValue)}
-                    >
-                      +{c.incrementValue}
-                    </button>
-                  </div>
-                </div>
-              </GlassCard>
-            ))}
+                </GlassCard>
+              );
+            })}
           </div>
         )}
       </div>
@@ -412,6 +547,31 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
           gap: 0.75rem;
         }
 
+        .mini-calendar-nav-controls {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+        }
+
+        .mini-month-display {
+          font-size: 0.9rem;
+          font-weight: 700;
+          color: var(--text-main);
+          min-width: 130px;
+          text-align: center;
+        }
+
+        .current-month-pill-btn {
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: var(--accent-primary);
+          background: rgba(56, 189, 248, 0.15);
+          border: 1px solid rgba(56, 189, 248, 0.3);
+          border-radius: var(--radius-full);
+          padding: 2px 8px;
+          cursor: pointer;
+        }
+
         .heatmap-legend {
           display: flex;
           gap: 1rem;
@@ -521,11 +681,63 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
           color: var(--text-main);
         }
 
-        .counter-card-val {
+        .counter-value-huge-clickable {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
           font-size: 1.4rem;
           font-weight: 800;
           font-family: var(--font-display);
           color: var(--accent-primary);
+          cursor: pointer;
+          border-radius: var(--radius-sm);
+          padding: 2px 6px;
+          margin-left: -6px;
+          transition: background var(--transition-fast);
+        }
+
+        .counter-value-huge-clickable:hover {
+          background: rgba(56, 189, 248, 0.12);
+        }
+
+        .counter-edit-pencil-icon {
+          opacity: 0;
+          color: var(--text-dim);
+          transition: opacity var(--transition-fast);
+        }
+
+        .counter-value-huge-clickable:hover .counter-edit-pencil-icon {
+          opacity: 1;
+        }
+
+        .counter-edit-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          margin-top: 0.2rem;
+        }
+
+        .counter-inline-input {
+          font-size: 1.2rem;
+          font-weight: 800;
+          font-family: var(--font-display);
+          color: var(--accent-primary);
+          padding: 0.2rem 0.4rem;
+          width: 100px;
+          min-height: 32px;
+        }
+
+        .counter-edit-save-btn {
+          width: 30px;
+          height: 30px;
+          border-radius: var(--radius-sm);
+          background: var(--accent-primary);
+          color: #ffffff;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
         }
 
         /* Reflection Notes */

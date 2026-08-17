@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Flame,
   Trophy,
@@ -8,6 +8,8 @@ import {
   Crown,
   Sparkles,
   Calendar,
+  Edit2,
+  Check,
 } from 'lucide-react';
 import { GlassCard } from '../../components/ui/GlassCard';
 import { GlassButton } from '../../components/ui/GlassButton';
@@ -56,30 +58,50 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
     [activeGoals, audits]
   );
 
-  // Motivational quote rotating state per goal
+  // Motivational quote state per goal (initialized once without auto-refresh interval)
   const [quotes, setQuotes] = useState<Record<string, MotivationalMessage>>({});
 
   useEffect(() => {
-    // Initial quotes
     const initialQuotes: Record<string, MotivationalMessage> = {};
     for (const goal of activeGoals) {
       initialQuotes[goal.id] = getContextualMotivation(allStreakStats[goal.id]);
     }
     setQuotes(initialQuotes);
-
-    // Rotate quotes smoothly every 12 seconds
-    const interval = setInterval(() => {
-      setQuotes((prev) => {
-        const next: Record<string, MotivationalMessage> = {};
-        for (const goal of activeGoals) {
-          next[goal.id] = getContextualMotivation(allStreakStats[goal.id], prev[goal.id]?.id);
-        }
-        return next;
-      });
-    }, 12000);
-
-    return () => clearInterval(interval);
   }, [activeGoals, allStreakStats]);
+
+  // Inline Counter Editing state
+  const [editingCounterId, setEditingCounterId] = useState<string | null>(null);
+  const [editCounterValue, setEditCounterValue] = useState<string>('');
+  const counterInputRef = useRef<HTMLInputElement>(null);
+
+  const startEditingCounter = (counter: CustomCounter, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingCounterId(counter.id);
+    setEditCounterValue(String(counter.currentValue ?? 0));
+  };
+
+  useEffect(() => {
+    if (editingCounterId && counterInputRef.current) {
+      counterInputRef.current.focus();
+      counterInputRef.current.select();
+    }
+  }, [editingCounterId]);
+
+  const commitCounterEdit = (counter: CustomCounter) => {
+    if (editingCounterId !== counter.id) return;
+    const parsed = parseInt(editCounterValue, 10);
+    const newVal = isNaN(parsed) ? 0 : parsed;
+    const delta = newVal - (counter.currentValue || 0);
+
+    if (delta !== 0) {
+      onUpdateCounterDelta(counter.id, delta);
+    }
+    setEditingCounterId(null);
+  };
+
+  const cancelCounterEdit = () => {
+    setEditingCounterId(null);
+  };
 
   // Overall calculations
   const totalAuditsCount = audits.length;
@@ -96,7 +118,7 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
       <div className="reallife-view-container animate-fade-in">
         <EmptyState
           icon={<Sparkles size={32} />}
-          title="Real Life Dashboard"
+          title="Re-Life Dashboard"
           description="Your personal habit trajectories, streaks, custom quantity counters, and persistent awards will illuminate here once you add goals."
           actionLabel="Create a Goal"
           onAction={onOpenGoalCreator}
@@ -142,7 +164,7 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
 
       {/* Goal Cards Grid */}
       <div className="section-header-row">
-        <h2>Active Goal Trajectories</h2>
+        <h2>Re-Life Habit Trajectories</h2>
         <span className="section-count-tag">{activeGoals.length} Goals</span>
       </div>
 
@@ -174,9 +196,17 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
                 <PolarityBadge polarity={goal.polarity} size="sm" />
               </div>
 
-              {/* Dynamic Animated Motivational Quote */}
+              {/* Personal Why Reason */}
+              {goal.description && (
+                <div className="card-personal-why-box">
+                  <span className="why-tag">WHY</span>
+                  <span className="why-text">{goal.description}</span>
+                </div>
+              )}
+
+              {/* Dynamic Contextual Motivational Quote */}
               {currentQuote && (
-                <div className="quote-box animate-fade-in" key={currentQuote.id}>
+                <div className="quote-box" key={currentQuote.id}>
                   <Sparkles size={14} color="var(--accent-primary)" style={{ flexShrink: 0 }} />
                   <span className="quote-text">"{currentQuote.text}"</span>
                 </div>
@@ -243,7 +273,7 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           <div>
             <h2>Custom Quantity Counters</h2>
             <p style={{ fontSize: '0.85rem' }}>
-              Track arbitrary metrics (savings, steps, pages, water) with cumulative history.
+              Track arbitrary metrics (savings, steps, pages, water). Click value to edit directly.
             </p>
           </div>
           <GlassButton variant="secondary" size="sm" onClick={onOpenCounterCreator}>
@@ -260,6 +290,7 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           <div className="counters-grid">
             {counters.map((counter) => {
               const aggregates = calculateCounterAggregates(counter, counterEvents);
+              const isEditing = editingCounterId === counter.id;
 
               return (
                 <GlassCard key={counter.id} className="counter-widget-card">
@@ -268,9 +299,40 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
                     <span className="counter-unit-tag">{counter.unit}</span>
                   </div>
 
-                  <div className="counter-value-huge">
-                    {counter.currentValue.toLocaleString()}
-                  </div>
+                  {/* Direct Editable Value */}
+                  {isEditing ? (
+                    <div className="counter-edit-wrapper" onClick={(e) => e.stopPropagation()}>
+                      <input
+                        ref={counterInputRef}
+                        type="number"
+                        className="glass-input counter-inline-input"
+                        value={editCounterValue}
+                        onChange={(e) => setEditCounterValue(e.target.value)}
+                        onBlur={() => commitCounterEdit(counter)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitCounterEdit(counter);
+                          if (e.key === 'Escape') cancelCounterEdit();
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="counter-edit-save-btn"
+                        onClick={() => commitCounterEdit(counter)}
+                        title="Save"
+                      >
+                        <Check size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="counter-value-huge-clickable"
+                      onClick={(e) => startEditingCounter(counter, e)}
+                      title="Click to directly type and edit value"
+                    >
+                      <span>{(counter.currentValue ?? 0).toLocaleString()}</span>
+                      <Edit2 size={14} className="counter-edit-pencil-icon" />
+                    </div>
+                  )}
 
                   <div className="counter-aggregates-row">
                     <div className="agg-item">
@@ -441,7 +503,7 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
         .goal-streak-card {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 0.9rem;
           cursor: pointer;
         }
 
@@ -471,6 +533,30 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           color: var(--text-main);
           margin: 0;
           line-height: 1.3;
+        }
+
+        .card-personal-why-box {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5rem;
+          padding: 0.45rem 0.65rem;
+          background: rgba(255, 255, 255, 0.03);
+          border-left: 2px solid var(--accent-primary);
+          border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+        }
+
+        .why-tag {
+          font-size: 0.65rem;
+          font-weight: 800;
+          color: var(--accent-primary);
+          letter-spacing: 0.05em;
+          margin-top: 1px;
+        }
+
+        .why-text {
+          font-size: 0.8rem;
+          color: var(--text-muted);
+          line-height: 1.35;
         }
 
         .quote-box {
@@ -618,12 +704,63 @@ export const RealLifeView: React.FC<RealLifeViewProps> = ({
           border-radius: 4px;
         }
 
-        .counter-value-huge {
+        .counter-value-huge-clickable {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
           font-size: 2rem;
           font-weight: 800;
           font-family: var(--font-display);
           color: var(--accent-primary);
           line-height: 1.1;
+          cursor: pointer;
+          border-radius: var(--radius-sm);
+          padding: 2px 6px;
+          margin-left: -6px;
+          transition: background var(--transition-fast);
+        }
+
+        .counter-value-huge-clickable:hover {
+          background: rgba(56, 189, 248, 0.12);
+        }
+
+        .counter-edit-pencil-icon {
+          opacity: 0;
+          color: var(--text-dim);
+          transition: opacity var(--transition-fast);
+        }
+
+        .counter-value-huge-clickable:hover .counter-edit-pencil-icon {
+          opacity: 1;
+        }
+
+        .counter-edit-wrapper {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .counter-inline-input {
+          font-size: 1.5rem;
+          font-weight: 800;
+          font-family: var(--font-display);
+          color: var(--accent-primary);
+          padding: 0.25rem 0.5rem;
+          width: 140px;
+          min-height: 38px;
+        }
+
+        .counter-edit-save-btn {
+          width: 36px;
+          height: 36px;
+          border-radius: var(--radius-md);
+          background: var(--accent-primary);
+          color: #ffffff;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
         }
 
         .counter-aggregates-row {
