@@ -49,6 +49,9 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
 
+  // Editable Heatmap Timeframe state (Default to 21 Days)
+  const [heatmapDays, setHeatmapDays] = useState<number>(21);
+
   // Inline Counter Editing state
   const [editingCounterId, setEditingCounterId] = useState<string | null>(null);
   const [editCounterValue, setEditCounterValue] = useState<string>('');
@@ -128,8 +131,8 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
   );
 
   const heatmapCells = useMemo(
-    () => generateGoalHeatmap(goal, audits, 84), // 12 weeks
-    [goal, audits]
+    () => generateGoalHeatmap(goal, audits, Math.max(1, heatmapDays)),
+    [goal, audits, heatmapDays]
   );
 
   // Notes history
@@ -246,13 +249,40 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
         </div>
       </GlassCard>
 
-      {/* Goal Activity Heatmap */}
+      {/* Editable Goal Activity Heatmap */}
       <GlassCard className="heatmap-section-card">
         <div className="section-title-row">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <CalendarIcon size={18} color="var(--accent-primary)" />
-            <h3>12-Week Activity Heatmap</h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+              <input
+                type="number"
+                min={1}
+                max={365}
+                className="heatmap-days-input"
+                value={heatmapDays}
+                onChange={(e) => setHeatmapDays(Math.max(1, Math.min(365, parseInt(e.target.value) || 21)))}
+                onFocus={(e) => e.target.select()}
+                title="Type custom number of days for heatmap"
+              />
+              <span>-Day Activity Heatmap</span>
+            </h3>
+
+            {/* Timeframe Presets */}
+            <div className="heatmap-presets">
+              {[21, 30, 60, 90, 84].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  className={`heatmap-preset-chip ${heatmapDays === d ? 'chip-active' : ''}`}
+                  onClick={() => setHeatmapDays(d)}
+                >
+                  {d === 84 ? '12w' : `${d}d`}
+                </button>
+              ))}
+            </div>
           </div>
+
           <div className="heatmap-legend">
             <div className="legend-item">
               <span className="legend-dot dot-success" /> Success
@@ -619,6 +649,55 @@ export const GoalDetailView: React.FC<GoalDetailViewProps> = ({
           margin-bottom: 1.25rem;
           flex-wrap: wrap;
           gap: 0.75rem;
+        }
+
+        .heatmap-days-input {
+          width: 52px;
+          font-size: 1.05rem;
+          font-weight: 800;
+          font-family: var(--font-display);
+          color: var(--accent-primary);
+          background: rgba(15, 23, 42, 0.6);
+          border: 1px solid var(--glass-border-hover);
+          border-radius: var(--radius-sm);
+          padding: 2px 4px;
+          text-align: center;
+        }
+
+        .heatmap-days-input:focus {
+          outline: none;
+          border-color: var(--accent-primary);
+          box-shadow: 0 0 0 2px var(--accent-primary-glow);
+        }
+
+        .heatmap-presets {
+          display: flex;
+          align-items: center;
+          gap: 0.35rem;
+          margin-left: 0.5rem;
+        }
+
+        .heatmap-preset-chip {
+          font-size: 0.72rem;
+          font-weight: 700;
+          padding: 2px 8px;
+          border-radius: var(--radius-full);
+          background: rgba(255, 255, 255, 0.05);
+          border: 1px solid var(--glass-border);
+          color: var(--text-muted);
+          cursor: pointer;
+          transition: all var(--transition-fast);
+        }
+
+        .heatmap-preset-chip:hover {
+          background: var(--glass-bg-hover);
+          color: var(--text-main);
+        }
+
+        .chip-active {
+          background: rgba(56, 189, 248, 0.15) !important;
+          border-color: var(--accent-primary) !important;
+          color: var(--accent-primary) !important;
         }
 
         .mini-calendar-nav-controls {
